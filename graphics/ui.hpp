@@ -34,6 +34,15 @@ enum class mouse_button_state
     down
 };
 
+enum class arrow_key
+{
+    up,
+    down,
+    left,
+    right,
+    none
+};
+
 struct mouse_information
 {
     mouse_button_state left_button_state,
@@ -58,8 +67,20 @@ struct mouse_information
     {}
 };
 
+struct window_viewport
+{
+    int32_t x_from,
+             x_to,
+             y_from,
+             y_to;
+    window_viewport() :
+        x_from{0}, x_to{0},
+        y_from{0}, y_to{0}
+    {};
+};
+
 /*
- * Objec responsible for the creation and handling of
+ * Object responsible for the creation and handling of
  * the game window
  */
 class ui
@@ -68,16 +89,26 @@ class ui
     game_events::game_evt_pointer       game_events_queue;
 
     drawing_statistics draw_stats;
+    window_viewport    viewport;
     mouse_information  mouse_state;
 
     uint32_t ui_window_height,
              ui_window_width;
 
     void init_ui_window();
-    void display_drawing_stats();
+    void display_ui_info();
     void draw_string(uint32_t x_pos,
                      uint32_t y_pos,
                      const std::string& text);
+
+    void init_viewport();
+    void move_viewport(uint32_t new_x_from,
+                       uint32_t new_y_from);
+    void update_viewport_size(uint32_t new_width,
+                              uint32_t new_height);
+
+    void handle_arrow_key_press(arrow_key key);
+    arrow_key is_arrow_key(uint32_t key_code);
 public:
     ui(game_configuration::game_config_ptr conf_info,
        game_events::game_evt_pointer event_queue);
@@ -90,6 +121,12 @@ public:
                      uint32_t x, uint32_t y);
     void mouse_move_with_trigger(uint32_t x,
                                  uint32_t y);
+    void keyboard_press(unsigned char ascii,
+                        uint32_t x,
+                        uint32_t y);
+    void keyboard_special_press(uint32_t key,
+                        uint32_t x,
+                        uint32_t y);
     void idle_function();
 };
 

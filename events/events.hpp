@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <typeinfo>
+#include <mutex>
 
 namespace game_events
 {
@@ -92,10 +93,12 @@ public:
     }
 };
 
+using event_queue_container_t = std::queue<event_type_ptr>;
 
 class events
 {
-    std::queue<event_type_ptr> event_queue;
+    event_queue_container_t event_queue;
+    std::mutex change_mtx;
 public:
     events();
     void push(event_type_ptr new_event);
@@ -104,6 +107,7 @@ public:
     std::size_t size();
     void clear();
     bool empty();
+    uint32_t move_events(event_queue_container_t& destination_queue);
 };
 
 }

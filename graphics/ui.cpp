@@ -32,6 +32,16 @@ void glut_motion_func_callback(int x,int y){
     ui_instance_pointer->mouse_move_with_trigger(x,y);
 }
 
+void glut_keyboard_func_callback(unsigned char ascii,
+                                 int x,int y){
+    ui_instance_pointer->keyboard_press(ascii,x,y);
+}
+
+void glut_keyboard_specialfunc_callback(int key,
+                                        int x,int y){
+    ui_instance_pointer->keyboard_special_press(key,x,y);
+}
+
 }
 
 void glut_mouse_click_callback(int button, int state,
@@ -100,14 +110,19 @@ void ui::init_ui_window()
     glutInitWindowPosition(0,0);
     glutInitWindowSize(ui_window_width,
                        ui_window_height);
+
     glutCreateWindow("Filip");
     glutReshapeFunc(glut_window_reshape_callback);
     glutDisplayFunc(glut_draw_callback);
     glutIdleFunc(glut_idle_func_callback);
     glutMouseFunc(glut_mouse_click_callback);
+    glutKeyboardFunc(glut_keyboard_func_callback);
+    glutSpecialFunc(glut_keyboard_specialfunc_callback);
+
+    init_viewport();
 }
 
-void ui::display_drawing_stats()
+void ui::display_ui_info()
 {
     glColor3f(1,1,1);
     std::stringstream stat_string;
@@ -119,6 +134,13 @@ void ui::display_drawing_stats()
     stat_string.str("");
     stat_string << "idle_func: "<<draw_stats.num_of_idle_func_call;
     draw_string(5,30,stat_string.str());
+    stat_string.str("");
+    stat_string<<"W. Width:"<<ui_window_width<<",Height:"<<ui_window_height;
+    draw_string(5,40,stat_string.str());
+    stat_string.str("");
+    stat_string<<"Viewport, X:"<<viewport.x_from<<"/"<<viewport.x_to;
+    stat_string<<" Y:"<<viewport.y_from<<"/"<<viewport.y_to;
+    draw_string(5,50,stat_string.str());
 }
 
 void ui::draw_string(uint32_t x_pos,
@@ -134,6 +156,76 @@ void ui::draw_string(uint32_t x_pos,
     }
 }
 
+void ui::init_viewport()
+{
+    viewport.x_to = ui_window_width;
+    viewport.y_to = ui_window_height;
+    LOG3("Setting initial viewport to x:",
+         viewport.x_from,"/",viewport.x_to,", y:",
+         viewport.y_from,"/",viewport.y_to);
+}
+
+void ui::move_viewport(uint32_t new_x_from,
+                       uint32_t new_y_from)
+{
+    viewport.x_from = new_x_from;
+    viewport.y_from = new_y_from;
+    viewport.x_to = new_x_from + ui_window_width;
+    viewport.y_to = new_y_from + ui_window_height;
+    LOG3("Setting the viewport to x:",
+         viewport.x_from,"/",viewport.x_to,", y:",
+         viewport.y_from,"/",viewport.y_to);
+
+    draw();
+}
+
+void ui::update_viewport_size(uint32_t new_width,
+                              uint32_t new_height)
+{
+    viewport.x_to = viewport.x_from + new_width;
+    viewport.y_to = viewport.y_from + new_height;
+
+    draw();
+}
+
+void ui::handle_arrow_key_press(arrow_key key)
+{
+    static int32_t default_vieport_shift{ 50 };
+    int8_t dir{ 1 };
+    if(key == arrow_key::left ||
+       key == arrow_key::up)
+        dir = -1;
+    switch (key) {
+    case arrow_key::down:
+    case arrow_key::up:
+        move_viewport(viewport.x_from,
+                      std::max<int32_t>(0,viewport.y_from +
+                                         dir*default_vieport_shift));
+        break;
+    case arrow_key::left:
+    case arrow_key::right:
+        move_viewport(std::max<int32_t>(0,viewport.x_from +
+                                         dir*default_vieport_shift),
+                      viewport.y_from);
+    default:
+        break;
+    }
+}
+
+arrow_key ui::is_arrow_key(uint32_t key_code)
+{
+    arrow_key key = arrow_key::none;
+    switch (key_code) {
+    case GLUT_KEY_DOWN: key = arrow_key::down; break;
+    case GLUT_KEY_UP:   key = arrow_key::up;   break;
+    case GLUT_KEY_RIGHT:key = arrow_key::right;break;
+    case GLUT_KEY_LEFT: key = arrow_key::left; break;
+    default:
+        break;
+    }
+    return key;
+}
+
 void ui::draw()
 {
     ++draw_stats.num_of_draw_call;
@@ -142,7 +234,8 @@ void ui::draw()
     glClear(GL_COLOR_BUFFER_BIT);
 
 
-    display_drawing_stats();
+
+    display_ui_info();
 
     glutSwapBuffers();
 }
@@ -154,10 +247,14 @@ void ui::window_reshape(uint32_t width, uint32_t height)
     ui_window_height = height;
     ui_window_width = width;
 
+    update_viewport_size(width,height);
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glViewport(0,0,ui_window_width,ui_window_height);
     gluOrtho2D(0.0,ui_window_width,ui_window_height,0);
+
+    draw();
 }
 
 void ui::mouse_click_down(mouse_button button,
@@ -195,6 +292,24 @@ void ui::mouse_click_up(mouse_button button,
 void ui::mouse_move_with_trigger(uint32_t x, uint32_t y)
 {
 
+}
+
+void ui::keyboard_press(unsigned char ascii,
+                        uint32_t x, uint32_t y)
+{
+    LOG1("Keyboard input, ascii:",ascii,", x:",x,
+         ", y:",y);
+}
+
+void ui::keyboard_special_press(uint32_t key,
+                                uint32_t x, uint32_t y)
+{
+    LOG1("Keyboard special input, key:",key,", x:",x,
+         ", y:",y);
+    arrow_key arrow = is_arrow_key(key);
+    if(arrow != arrow_key::none){
+        handle_arrow_key_press(arrow);
+    }
 }
 
 void ui::idle_function()
