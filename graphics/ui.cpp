@@ -263,7 +263,10 @@ void ui::mouse_click_down(mouse_button button,
     if(button == mouse_button::left_button)
     {
         auto mouse_click_evt = game_events::event_factory<
-                game_events::mouse_left_button_down_evt>::create(x,y);
+                game_events::mouse_left_button_down_evt>::create(
+                                                viewport.x_from + x,
+                                                viewport.y_from + y
+                                                                );
 
         game_events_queue->push(mouse_click_evt);
 
@@ -279,7 +282,10 @@ void ui::mouse_click_up(mouse_button button,
     if(button == mouse_button::left_button)
     {
         auto mouse_click_evt = game_events::event_factory<
-                game_events::mouse_left_button_up_evt>::create(x,y);
+                game_events::mouse_left_button_up_evt>::create(
+                                                viewport.x_from + x,
+                                                viewport.y_from + y
+                                                               );
 
         game_events_queue->push(mouse_click_evt);
 

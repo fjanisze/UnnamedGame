@@ -70,6 +70,8 @@ file(GLOB SRC_LIST
     "./configuration/*.*"
     "./runner/*.*"
     "./graphics/*.*"
+    "./maps/*.*"
+    "./random/*.*"
 )
 
 add_executable(${PROJECT_NAME} ${SRC_LIST})
