@@ -17,12 +17,10 @@ runner::runner(){
     game_ui = std::make_shared<game_graphics::ui>(game_conf,
                                                   game_event_queue);
 
+    game = std::make_shared<game_engine>();
+
     setup_logger();
 
-    //Start the game loop
-  /*  std::async(std::launch::async,
-               &runner::game_loop,
-               this);*/
     auto game_loop_thread = std::thread{&runner::game_loop,this};
     game_loop_thread.detach();
 }
@@ -49,6 +47,11 @@ void runner::setup_logger(){
         new_severity = logging::severity_type(std::stoi(logging_level));
         log_inst.set_logging_level(new_severity);
     }
+}
+
+game_engine::game_engine()
+{
+    LOG3("Starting the game engine");
 }
 
 }

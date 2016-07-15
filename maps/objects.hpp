@@ -1,60 +1,65 @@
 #ifndef OBJECTS_HPP
 #define OBJECTS_CPP
 
+#include "position.hpp"
 #include <string>
 #include <memory>
 
 namespace objects
 {
+using namespace coordinates;
 
-struct object_planet;
+struct celestial_body;
 
-using object_planet_ptr = std::shared_ptr<object_planet>;
+using celestial_body_ptr = std::shared_ptr<celestial_body>;
+using celestial_body_cptr = std::shared_ptr<const celestial_body>;
 
-struct object_position
+enum class celestial_body_types
 {
-    uint32_t x,
-             y,
-             diameter;
+    celestial_body_none,
+    celestial_body_planet,
+    celestial_body_star
+};
 
-    object_position():
-        x{0},y{0},diameter{0}
+struct celestial_body_spec
+{
+    uint32_t diameter;
+
+    celestial_body_spec():
+        diameter{0}
     {}
 };
 
-/*
- * The common base for all the objects is monstly
- * important in order to allow a uniform way of
- * drawing those entities.
- */
-class drawable_object
+struct object_info
 {
-protected:
-    object_position position;
-public:
-    drawable_object();
+    celestial_body_types body_type;
+    std::string          body_name;
+    uint32_t             body_unique_id;
+    object_coordinates   body_position;
+    celestial_body_spec  body_specifics;
 
-    virtual ~drawable_object();
+    object_info();
 };
 
-
-class object_planet : public drawable_object
+class celestial_body
 {
+    object_info body_info;
 public:
-    explicit object_planet(const std::string& name,
-                  uint32_t diameter,
-                  uint32_t x_coord,
-                  uint32_t y_coord);
+    explicit celestial_body(const std::string& name,
+                  const celestial_body_spec& specifics,
+                  const object_coordinates& position);
+
+    const object_coordinates& get_body_coordinates();
 
     template<typename...ARGS>
-    static object_planet_ptr create(ARGS...args);
+    static celestial_body_ptr create(ARGS...args);
 
 };
 
 template<typename...ARGS>
-object_planet_ptr object_planet::create(ARGS...args)
+celestial_body_ptr celestial_body::create(ARGS...args)
 {
-    return std::make_shared<object_planet>(std::forward<ARGS>(args)...);
+    return std::make_shared<celestial_body>(std::forward<ARGS>(args)...);
 }
 
 

@@ -5,24 +5,22 @@
 namespace objects
 {
 
-drawable_object::drawable_object()
+celestial_body::celestial_body(const std::string &name,
+                             const celestial_body_spec &specifics,
+                             const object_coordinates &position)
 {
-
+    body_info.body_specifics = specifics;
+    body_info.body_position = position;
 }
 
-objects::drawable_object::~drawable_object()
+const object_coordinates &celestial_body::get_body_coordinates()
 {
-
+    return body_info.body_position;
 }
 
-object_planet::object_planet(const std::string &name,
-                             uint32_t diameter,
-                             uint32_t x_coord,
-                             uint32_t y_coord)
-{
-    position.diameter = diameter;
-    position.x = x_coord;
-    position.y = y_coord;
-}
+object_info::object_info():
+    body_type{celestial_body_types::celestial_body_none},
+    body_unique_id{0}
+{   }
 
 }
