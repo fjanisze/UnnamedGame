@@ -1,5 +1,5 @@
 #ifndef OBJECTS_HPP
-#define OBJECTS_CPP
+#define OBJECTS_HPP
 
 #include "position.hpp"
 #include <string>
@@ -65,4 +65,4 @@ celestial_body_ptr celestial_body::create(ARGS...args)
 
 }
 
-#endif
+#endif //OBJECTS_HPP

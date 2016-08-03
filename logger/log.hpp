@@ -103,7 +103,7 @@ namespace logging
 
 		std::vector< std::string > log_buffer;
 		std::thread daemon;
-		std::atomic_flag is_still_running{ ATOMIC_FLAG_INIT };
+        std::atomic_flag is_still_running = ATOMIC_FLAG_INIT;
 
 		//Core printing functionality
 		void print_impl(std::stringstream&&);

@@ -54,9 +54,17 @@ if(NOT OPENGL_GLU_FOUND)
     message(ERROR " GLU not found!")
 endif(NOT OPENGL_GLU_FOUND)
 
+#########################################################
+# FIND GLFW
+#########################################################
+
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory("./graphics/glfw/")
 
 #########################################################
-# Remaining shit
+# Remaining stuff
 #########################################################
 
 file(GLOB SRC_LIST
@@ -81,7 +89,8 @@ target_link_libraries(
     ${CMAKE_THREAD_LIBS_INIT}
     ${GLUT_LIBRARIES}
     ${OPENGL_glu_LIBRARY}
-    ${OPENGL_gl_LIBRARY} )
+    ${OPENGL_gl_LIBRARY}
+    glfw)
 
 
 
