@@ -78,6 +78,7 @@ file(GLOB SRC_LIST
     "./configuration/*.*"
     "./runner/*.*"
     "./graphics/*.*"
+    "./graphics/imgui/*.*"
     "./maps/*.*"
     "./random/*.*"
 )

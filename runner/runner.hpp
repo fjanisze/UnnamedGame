@@ -43,6 +43,7 @@ class runner
     void game_loop();
 public:
     runner();
+    void start();
 };
 
 }

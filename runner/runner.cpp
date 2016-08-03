@@ -25,6 +25,11 @@ runner::runner(){
     game_loop_thread.detach();
 }
 
+void runner::start()
+{
+    game_ui->loop();
+}
+
 void runner::game_loop(){
     SET_LOG_THREAD_NAME("GLOOP");
     LOG3("Entering the game loop");

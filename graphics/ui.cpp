@@ -1,5 +1,7 @@
 #include <GL/glut.h>
 #include "ui.hpp"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
 
 namespace game_graphics
 {
@@ -40,6 +42,54 @@ void glut_keyboard_func_callback(unsigned char ascii,
 void glut_keyboard_specialfunc_callback(int key,
                                         int x,int y){
     ui_instance_pointer->keyboard_special_press(key,x,y);
+}
+
+void mousebutton_callback(GLFWwindow* window,
+                               int button,
+                               int action,
+                               int mods)
+{
+    double x,y; //Mouse position
+    glfwGetCursorPos(window,
+                     &x,
+                     &y);
+    \
+    mouse_button pressed_button;
+    switch(button){
+    case GLFW_MOUSE_BUTTON_LEFT:
+        pressed_button = mouse_button::left_button;
+        break;
+    case GLFW_MOUSE_BUTTON_MIDDLE:
+        pressed_button = mouse_button::middle_button;
+        break;
+    case GLFW_MOUSE_BUTTON_RIGHT:
+        pressed_button = mouse_button::right_button;
+        break;
+    default:
+        ERR("Unable to understand what button is pressed! ",
+            button,", ",action,", ",mods);
+        return;
+    }
+
+    if(action == GLFW_PRESS){
+        ui_instance_pointer->mouse_click_down(pressed_button,
+                                              x,
+                                              y);
+    }else{
+        ui_instance_pointer->mouse_click_up(pressed_button,
+                                            x,
+                                            y);
+    }
+}
+
+/*
+ * This is the callback used to report failures on
+ * GLFW side
+ */
+void glfw_error_callback(int error, const char* description)
+{
+    ERR("Error reported by GLFW, code:",error,", description:",
+        description);
 }
 
 }
@@ -106,20 +156,128 @@ void ui::init_ui_window()
     ui_window_width = std::stoi(window_width);
 
     LOG1("Configuring window size to ", ui_window_height,"x",ui_window_width);
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    glutInitWindowPosition(0,0);
-    glutInitWindowSize(ui_window_width,
-                       ui_window_height);
-
-    glutCreateWindow("Filip");
-    glutReshapeFunc(glut_window_reshape_callback);
-    glutDisplayFunc(glut_draw_callback);
-    glutIdleFunc(glut_idle_func_callback);
-    glutMouseFunc(glut_mouse_click_callback);
-    glutKeyboardFunc(glut_keyboard_func_callback);
-    glutSpecialFunc(glut_keyboard_specialfunc_callback);
 
     init_viewport();
+    init_glfw_window();
+
+    setup_ui_styles(false,1);
+}
+
+void ui::init_glfw_window()
+{
+    glfwSetErrorCallback(glfw_error_callback);
+
+    if(!glfwInit()){
+        ERR("Unable to init GLFW!");
+        throw std::runtime_error("GLFW initialization failed");
+    }
+
+    window = glfwCreateWindow(ui_window_width,
+                               ui_window_height,
+                               "Unnamed Game",
+                               NULL,
+                               NULL);
+    if(nullptr == window){
+        ERR("Unable to create the window!");
+        throw std::runtime_error("Window creation failed!");
+    }
+
+    // Setup ImGui binding
+    ImGui_ImplGlfw_Init(window,
+                        true);
+
+    glfwMakeContextCurrent(window);
+
+    //Setup all the callbacks
+    glfwSetMouseButtonCallback(window,
+                               mousebutton_callback);
+}
+
+void ui::setup_ui_styles(bool dark_style,
+                         float alpha)
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    // light style from Pacôme Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
+    style.Alpha = 1.0f;
+    style.FrameRounding = 3.0f;
+    style.Colors[ImGuiCol_Text]                  = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+    style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.94f, 0.94f, 0.94f, 1.00f);
+    style.Colors[ImGuiCol_ChildWindowBg]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    style.Colors[ImGuiCol_PopupBg]               = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
+    style.Colors[ImGuiCol_Border]                = ImVec4(0.00f, 0.00f, 0.00f, 0.39f);
+    style.Colors[ImGuiCol_BorderShadow]          = ImVec4(1.00f, 1.00f, 1.00f, 0.10f);
+    style.Colors[ImGuiCol_FrameBg]               = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
+    style.Colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
+    style.Colors[ImGuiCol_FrameBgActive]         = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+    style.Colors[ImGuiCol_TitleBg]               = ImVec4(0.96f, 0.96f, 0.96f, 1.00f);
+    style.Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(1.00f, 1.00f, 1.00f, 0.51f);
+    style.Colors[ImGuiCol_TitleBgActive]         = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
+    style.Colors[ImGuiCol_MenuBarBg]             = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
+    style.Colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.98f, 0.98f, 0.98f, 0.53f);
+    style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.69f, 0.69f, 0.69f, 1.00f);
+    style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.59f, 0.59f, 0.59f, 1.00f);
+    style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.49f, 0.49f, 0.49f, 1.00f);
+    style.Colors[ImGuiCol_ComboBg]               = ImVec4(0.86f, 0.86f, 0.86f, 0.99f);
+    style.Colors[ImGuiCol_CheckMark]             = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_SliderGrab]            = ImVec4(0.24f, 0.52f, 0.88f, 1.00f);
+    style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_Button]                = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
+    style.Colors[ImGuiCol_ButtonHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_ButtonActive]          = ImVec4(0.06f, 0.53f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_Header]                = ImVec4(0.26f, 0.59f, 0.98f, 0.31f);
+    style.Colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+    style.Colors[ImGuiCol_HeaderActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_Column]                = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+    style.Colors[ImGuiCol_ColumnHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
+    style.Colors[ImGuiCol_ColumnActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(1.00f, 1.00f, 1.00f, 0.50f);
+    style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+    style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
+    style.Colors[ImGuiCol_CloseButton]           = ImVec4(0.59f, 0.59f, 0.59f, 0.50f);
+    style.Colors[ImGuiCol_CloseButtonHovered]    = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
+    style.Colors[ImGuiCol_CloseButtonActive]     = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
+    style.Colors[ImGuiCol_PlotLines]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+    style.Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+    style.Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+    style.Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+    style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+    style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+
+    if( dark_style )
+    {
+        for (int i = 0; i <= ImGuiCol_COUNT; i++)
+        {
+            ImVec4& col = style.Colors[i];
+            float H, S, V;
+            ImGui::ColorConvertRGBtoHSV( col.x, col.y, col.z, H, S, V );
+
+            if( S < 0.1f )
+            {
+                V = 1.0f - V;
+            }
+            ImGui::ColorConvertHSVtoRGB( H, S, V, col.x, col.y, col.z );
+            if( col.w < 1.00f )
+            {
+                col.w *= alpha;
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i <= ImGuiCol_COUNT; i++)
+        {
+            ImVec4& col = style.Colors[i];
+            if( col.w < 1.00f )
+            {
+                col.x *= alpha;
+                col.y *= alpha;
+                col.z *= alpha;
+                col.w *= alpha;
+            }
+        }
+    }
 }
 
 void ui::display_ui_info()
@@ -321,6 +479,32 @@ void ui::keyboard_special_press(uint32_t key,
 void ui::idle_function()
 {
     ++draw_stats.num_of_idle_func_call;
+}
+
+void ui::loop()
+{
+    while (!glfwWindowShouldClose(window))
+    {
+        glfwPollEvents();
+
+        ImGui_ImplGlfw_NewFrame();
+
+        ImGui::SetNextWindowSize(ImVec2(150,100),ImGuiSetCond_FirstUseEver);
+        ImGui::Begin("Test Window");
+        ImGui::Text("Hello World");
+        ImGui::End();
+
+        display_ui_info();
+
+        glViewport(0, 0, ui_window_width,
+                   ui_window_height);
+
+        glClearColor(0,0,0,1);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        ImGui::Render();
+        glfwSwapBuffers(window);
+    }
 }
 
 }

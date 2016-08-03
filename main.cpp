@@ -14,7 +14,6 @@ int main(int argc,char** argv)
     glutInit(&argc,argv);
 
     game_runner::runner runner;
-
-    glutMainLoop();
+    runner.start();
 }
 

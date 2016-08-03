@@ -7,6 +7,8 @@
 #include "../configuration/configuration.hpp"
 #include "../events/events.hpp"
 
+#include <GLFW/glfw3.h>
+
 namespace game_graphics
 {
 
@@ -91,11 +93,14 @@ class ui
     drawing_statistics draw_stats;
     window_viewport    viewport;
     mouse_information  mouse_state;
+    GLFWwindow*        window;
 
     uint32_t ui_window_height,
              ui_window_width;
 
     void init_ui_window();
+    void init_glfw_window();
+    void setup_ui_styles(bool dark_style,float alpha);
     void display_ui_info();
     void draw_string(uint32_t x_pos,
                      uint32_t y_pos,
@@ -128,6 +133,8 @@ public:
                         uint32_t x,
                         uint32_t y);
     void idle_function();
+
+    void loop();
 };
 
 }
