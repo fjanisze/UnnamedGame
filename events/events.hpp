@@ -22,23 +22,27 @@ using event_type_ptr = std::shared_ptr<game_event_type>;
 using game_evt_pointer = std::shared_ptr<events>;
 
 /*
+ * Each event shall have its own unique identificator
+ */
+enum events_ids {
+    ui_mouse_left_button_down,
+    ui_mouse_left_button_up
+};
+
+/*
  * The generic base class for all the possible
  * events.
  */
 class game_event_type
 {
-    const event_id_t id;
+    const events_ids id;
 public:
-    game_event_type(event_id_t event_id):
+    game_event_type(events_ids event_id):
         id{ event_id }
     {}
     virtual void process() {}
-    virtual event_id_t get_id() = 0;
-
-    template<typename T>
-    std::shared_ptr<T> cast_pointer(event_type_ptr pointer){
-        return std::dynamic_pointer_cast<T,
-                game_events::game_event_type>(pointer);
+    events_ids get_id(){
+        return id;
     }
 
     virtual ~game_event_type() {}
@@ -46,18 +50,17 @@ public:
 
 class mouse_left_button_down_evt : public game_event_type
 {
-    uint32_t x_coord,
-             y_coord;
 public:
+    uint32_t x_coord{ 0 },
+             y_coord{ 0 };
+    mouse_left_button_down_evt() :
+        game_event_type( events_ids::ui_mouse_left_button_down )
+    {}
     explicit mouse_left_button_down_evt(uint32_t x,uint32_t y):
-        game_event_type(1),
+        game_event_type( events_ids::ui_mouse_left_button_down ),
         x_coord{x},
         y_coord{y}
     {}
-
-    event_id_t get_id(){
-        return 1;
-    }
 
     ~mouse_left_button_down_evt(){}
 };
@@ -65,18 +68,17 @@ public:
 
 class mouse_left_button_up_evt : public game_event_type
 {
-    uint32_t x_coord,
-             y_coord;
 public:
+    uint32_t x_coord{ 0 },
+             y_coord{ 0 };
+    mouse_left_button_up_evt() :
+        game_event_type( events_ids::ui_mouse_left_button_up )
+    {}
     explicit mouse_left_button_up_evt(uint32_t x,uint32_t y):
-        game_event_type(2),
+        game_event_type( events_ids::ui_mouse_left_button_up ),
         x_coord{x},
         y_coord{y}
     {}
-
-    event_id_t get_id(){
-        return 2;
-    }
 
     ~mouse_left_button_up_evt(){}
 };
@@ -89,7 +91,8 @@ public:
     static event_type_ptr create(EVENT_ARGS...event_args)
     {
         LOG1("Creating new event, name: ",typeid(EVENT_TYPE).name());
-        return std::make_shared<EVENT_TYPE>(std::forward<EVENT_ARGS>(event_args)...);
+        return std::dynamic_pointer_cast<game_event_type>(
+                    std::make_shared<EVENT_TYPE>(std::forward<EVENT_ARGS>(event_args)...));
     }
 };
 
@@ -99,8 +102,9 @@ class events
 {
     event_queue_container_t event_queue;
     std::mutex change_mtx;
+    std::string queue_name;
 public:
-    events();
+    events(const std::string &queue_name);
     void push(event_type_ptr new_event);
     event_type_ptr front();
     void pop();

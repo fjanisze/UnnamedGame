@@ -13,7 +13,7 @@ runner::runner(){
     game_time = std::make_shared<game_chrono::chrono>();
     game_conf = std::make_shared<game_configuration::configuration_loader>("config.txt");
     game_random_engine = std::make_shared<random_engine::random>();
-    game_event_queue = std::make_shared<game_events::events>();
+    game_event_queue = std::make_shared<game_events::events>("RUNNER QUEUE");
     game_ui = std::make_shared<game_graphics::ui>(game_conf,
                                                   game_event_queue);
 

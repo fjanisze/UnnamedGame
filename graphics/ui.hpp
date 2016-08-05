@@ -89,6 +89,7 @@ class ui
 {
     game_configuration::game_config_ptr game_conf;
     game_events::game_evt_pointer       game_events_queue;
+    game_events::game_evt_pointer       ui_events_queue;
 
     drawing_statistics draw_stats;
     window_viewport    viewport;
@@ -114,6 +115,7 @@ class ui
 
     void handle_arrow_key_press(arrow_key key);
     arrow_key is_arrow_key(uint32_t key_code);
+    void process_ui_events();
 public:
     ui(game_configuration::game_config_ptr conf_info,
        game_events::game_evt_pointer event_queue);

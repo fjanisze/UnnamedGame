@@ -3,14 +3,18 @@
 namespace game_events
 {
 
-events::events(){
-    LOG3("Running the game main queue!");
+events::events(const std::string& name) :
+    queue_name{ name }
+{
+    LOG3("Running the game queue: ",
+         queue_name);
 }
 
 void events::push(event_type_ptr new_event)
 {
     std::lock_guard<std::mutex> lock(change_mtx);
-    LOG1("Pushing new event id: ",new_event->get_id());
+    LOG1("Pushing new event id (",queue_name,"): ",
+         new_event->get_id());
     event_queue.push(new_event);
 }
 
@@ -22,7 +26,8 @@ event_type_ptr events::front()
 void events::pop()
 {
     std::lock_guard<std::mutex> lock(change_mtx);
-    LOG1("Popping the next event: ",event_queue.front()->get_id());
+    LOG1("Popping the next event (",queue_name,"): ",
+         event_queue.front()->get_id());
     event_queue.pop();
 }
 
@@ -36,7 +41,8 @@ void events::clear()
     std::lock_guard<std::mutex> lock(change_mtx);
     while(!event_queue.empty())
     {
-        LOG3("Queue clear, removing event: ",event_queue.front()->get_id());
+        LOG3("Queue clear, removing event (",queue_name,"): ",
+             event_queue.front()->get_id());
         event_queue.pop();
     }
 }
@@ -56,7 +62,7 @@ uint32_t events::move_events(event_queue_container_t& destination_queue)
 {
     std::lock_guard<std::mutex> lock(change_mtx);
     uint32_t queue_size = event_queue.size();
-    LOG1("Copying the content of the queue, size:",
+    LOG1("Copying the content of the queue (",queue_name,"), size:",
          queue_size);
     while(!event_queue.empty())
     {

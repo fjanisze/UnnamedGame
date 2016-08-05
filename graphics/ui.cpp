@@ -53,32 +53,40 @@ void mousebutton_callback(GLFWwindow* window,
     glfwGetCursorPos(window,
                      &x,
                      &y);
-    \
-    mouse_button pressed_button;
-    switch(button){
-    case GLFW_MOUSE_BUTTON_LEFT:
-        pressed_button = mouse_button::left_button;
-        break;
-    case GLFW_MOUSE_BUTTON_MIDDLE:
-        pressed_button = mouse_button::middle_button;
-        break;
-    case GLFW_MOUSE_BUTTON_RIGHT:
-        pressed_button = mouse_button::right_button;
-        break;
-    default:
-        ERR("Unable to understand what button is pressed! ",
-            button,", ",action,", ",mods);
-        return;
-    }
+    if(ImGui::IsMouseHoveringAnyWindow() == false){
+        //Handle the click only if the mouse is not
+        //over a ImGui window
+        mouse_button pressed_button;
+        switch(button){
+        case GLFW_MOUSE_BUTTON_LEFT:
+            pressed_button = mouse_button::left_button;
+            break;
+        case GLFW_MOUSE_BUTTON_MIDDLE:
+            pressed_button = mouse_button::middle_button;
+            break;
+        case GLFW_MOUSE_BUTTON_RIGHT:
+            pressed_button = mouse_button::right_button;
+            break;
+        default:
+            ERR("Unable to understand what button is pressed! ",
+                button,", ",action,", ",mods);
+            return;
+        }
 
-    if(action == GLFW_PRESS){
-        ui_instance_pointer->mouse_click_down(pressed_button,
-                                              x,
-                                              y);
-    }else{
-        ui_instance_pointer->mouse_click_up(pressed_button,
-                                            x,
-                                            y);
+        if(action == GLFW_PRESS){
+            ui_instance_pointer->mouse_click_down(pressed_button,
+                                                  x,
+                                                  y);
+        }else{
+            ui_instance_pointer->mouse_click_up(pressed_button,
+                                                x,
+                                                y);
+        }
+    }
+    else{
+        //Call the ImGui Handler for further processing
+        ImGui_ImplGlfw_MouseButtonCallback(window,button,
+                                           action,mods);
     }
 }
 
@@ -134,6 +142,8 @@ ui::ui(game_configuration::game_config_ptr conf_info,
     game_events_queue{event_queue}
 {
     LOG3("Running the UI object.");
+    //Create the ui queue
+    ui_events_queue = std::make_shared<game_events::events>("UI QUEUE");
     //Save the pointer to this object
     ui_instance_pointer = this;
     //Start the initialization
@@ -184,7 +194,7 @@ void ui::init_glfw_window()
 
     // Setup ImGui binding
     ImGui_ImplGlfw_Init(window,
-                        true);
+                        false);
 
     glfwMakeContextCurrent(window);
 
@@ -427,8 +437,7 @@ void ui::mouse_click_down(mouse_button button,
                                                                 );
 
         game_events_queue->push(mouse_click_evt);
-
-        mouse_state.press_left();
+        ui_events_queue->push(mouse_click_evt);
     }else{
         LOG1("Unsupported mouse click button!");
     }
@@ -446,8 +455,7 @@ void ui::mouse_click_up(mouse_button button,
                                                                );
 
         game_events_queue->push(mouse_click_evt);
-
-        mouse_state.release_left();
+        ui_events_queue->push(mouse_click_evt);
     }else{
         LOG1("Unsupported mouse click button!");
     }
@@ -481,20 +489,67 @@ void ui::idle_function()
     ++draw_stats.num_of_idle_func_call;
 }
 
+void ui::process_ui_events()
+{
+    if(ui_events_queue->empty()){
+        return; //Nothing to do now
+    }
+    game_events::event_queue_container_t ui_events;
+    ui_events_queue->move_events(ui_events);
+    while(!ui_events.empty())
+    {
+        auto evt = ui_events.front();
+        ui_events.pop();
+        switch(evt->get_id())
+        {
+        case game_events::events_ids::ui_mouse_left_button_down:
+            {
+                auto mouse_evt = std::dynamic_pointer_cast<game_events::mouse_left_button_down_evt,
+                    game_events::game_event_type>(evt);
+                LOG1("Handling left mouse button down, coord: ",
+                     mouse_evt->x_coord,"/",mouse_evt->y_coord);
+            }
+            break;
+        case game_events::events_ids::ui_mouse_left_button_up:
+            {
+                auto mouse_evt = std::dynamic_pointer_cast<game_events::mouse_left_button_up_evt,
+                        game_events::game_event_type>(evt);
+                LOG1("Handling left mouse button up, coord: ",
+                     mouse_evt->x_coord,"/",mouse_evt->y_coord);
+            }
+            break;
+        default:
+            WARN1("Unable to process the event with ID ",
+                  evt->get_id());
+        }
+    }
+}
+
 void ui::loop()
 {
+    bool load_texture{ false };
+    bool close_window{ false };
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
 
         ImGui_ImplGlfw_NewFrame();
 
-        ImGui::SetNextWindowSize(ImVec2(150,100),ImGuiSetCond_FirstUseEver);
-        ImGui::Begin("Test Window");
-        ImGui::Text("Hello World");
-        ImGui::End();
+        if(close_window == false){
+            ImGui::SetNextWindowSize(ImVec2(350,100),ImGuiSetCond_FirstUseEver);
+            ImGui::Begin("What do you want to do?");
+            if(ImGui::Button("Load the texture"))
+                load_texture = true;
+            if(ImGui::Button("Close Window"))
+                close_window = true;
+            ImGui::End();
+        }
+
 
         display_ui_info();
+
+        //Let the UI process the UI events
+        process_ui_events();
 
         glViewport(0, 0, ui_window_width,
                    ui_window_height);

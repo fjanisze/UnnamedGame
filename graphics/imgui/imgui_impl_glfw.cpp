@@ -223,7 +223,7 @@ bool    ImGui_ImplGlfw_Init(GLFWwindow* window, bool install_callbacks)
 
     if (install_callbacks)
     {
-        glfwSetMouseButtonCallback(window, ImGui_ImplGlfw_MouseButtonCallback);
+   //     glfwSetMouseButtonCallback(window, ImGui_ImplGlfw_MouseButtonCallback);
    //     glfwSetScrollCallback(window, ImGui_ImplGlfw_ScrollCallback);
    //     glfwSetKeyCallback(window, ImGui_ImplGlFw_KeyCallback);
    //     glfwSetCharCallback(window, ImGui_ImplGlfw_CharCallback);
