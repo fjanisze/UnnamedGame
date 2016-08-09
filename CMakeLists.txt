@@ -59,7 +59,7 @@ endif(NOT OPENGL_GLU_FOUND)
 #########################################################
 find_package(Freetype REQUIRED)
 include_directories(${FREETYPE_INCLUDE_DIRS})
-
+link_directories(${FREETYPE_LIBRARIES})
 
 #########################################################
 # FIND GLFW
@@ -98,6 +98,7 @@ target_link_libraries(
     ${GLUT_LIBRARIES}
     ${OPENGL_glu_LIBRARY}
     ${OPENGL_gl_LIBRARY}
+    ${FREETYPE_LIBRARIES}
     glfw)
 
 
