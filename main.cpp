@@ -1,5 +1,4 @@
-/*
-#include <GL/glut.h>
+/*#include <GL/glut.h>
 #include "logger/logger.hpp"
 #include "runner/runner.hpp"
 #include <iostream>
@@ -43,94 +42,7 @@ int main(int argc,char** argv)
 // GL includes
 // Properties
 
-
-
-class Shader
-{
-public:
-    GLuint Program;
-    // Constructor generates the shader on the fly
-    Shader(const GLchar* vertexPath, const GLchar* fragmentPath)
-    {
-        // 1. Retrieve the vertex/fragment source code from filePath
-        std::string vertexCode;
-        std::string fragmentCode;
-        std::ifstream vShaderFile;
-        std::ifstream fShaderFile;
-        // ensures ifstream objects can throw exceptions:
-        vShaderFile.exceptions (std::ifstream::badbit);
-        fShaderFile.exceptions (std::ifstream::badbit);
-        try
-        {
-            // Open files
-            vShaderFile.open(vertexPath);
-            fShaderFile.open(fragmentPath);
-            std::stringstream vShaderStream, fShaderStream;
-            // Read file's buffer contents into streams
-            vShaderStream << vShaderFile.rdbuf();
-            fShaderStream << fShaderFile.rdbuf();
-            // close file handlers
-            vShaderFile.close();
-            fShaderFile.close();
-            // Convert stream into string
-            vertexCode = vShaderStream.str();
-            fragmentCode = fShaderStream.str();
-        }
-        catch (std::ifstream::failure e)
-        {
-            std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
-        }
-        const GLchar* vShaderCode = vertexCode.c_str();
-        const GLchar * fShaderCode = fragmentCode.c_str();
-        // 2. Compile shaders
-        GLuint vertex, fragment;
-        GLint success;
-        GLchar infoLog[512];
-        // Vertex Shader
-        vertex = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex, 1, &vShaderCode, NULL);
-        glCompileShader(vertex);
-        // Print compile errors if any
-        glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            glGetShaderInfoLog(vertex, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-        }
-        // Fragment Shader
-        fragment = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment, 1, &fShaderCode, NULL);
-        glCompileShader(fragment);
-        // Print compile errors if any
-        glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            glGetShaderInfoLog(fragment, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-        }
-        // Shader Program
-        this->Program = glCreateProgram();
-        glAttachShader(this->Program, vertex);
-        glAttachShader(this->Program, fragment);
-        glLinkProgram(this->Program);
-        // Print linking errors if any
-        glGetProgramiv(this->Program, GL_LINK_STATUS, &success);
-        if (!success)
-        {
-            glGetProgramInfoLog(this->Program, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-        }
-        // Delete the shaders as they're linked into our program now and no longer necessery
-        glDeleteShader(vertex);
-        glDeleteShader(fragment);
-
-    }
-    // Uses the current shader
-    void Use()
-    {
-        glUseProgram(this->Program);
-    }
-};
+#include "graphics/shaders.hpp"
 
 // Properties
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -147,7 +59,7 @@ std::map<GLchar, Character> Characters;
 GLuint VAO, VBO;
 
 
-void RenderText(Shader &shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);
+void RenderText(game_shaders::shader &shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);
 
 static void GLFW_error(int error, const char* description)
 {
@@ -191,10 +103,11 @@ int main()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Compile and setup the shader
-    Shader shader("shaders/text.vs", "shaders/text.frag");
+    game_shaders::shader shader;
+    shader.load_from_path("shaders/text.vs", "shaders/text.frag");
     glm::mat4 projection = glm::ortho(0.0f, static_cast<GLfloat>(WIDTH), 0.0f, static_cast<GLfloat>(HEIGHT));
-    shader.Use();
-    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    shader.use_shader();
+    glUniformMatrix4fv(glGetUniformLocation(shader.get_shader_program(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
     // FreeType
     FT_Library ft;
@@ -289,11 +202,11 @@ int main()
     return 0;
 }
 
-void RenderText(Shader &shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color)
+void RenderText(game_shaders::shader &shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color)
 {
     // Activate corresponding render state
-    shader.Use();
-    glUniform3f(glGetUniformLocation(shader.Program, "textColor"), color.x, color.y, color.z);
+    shader.use_shader();
+    glUniform3f(glGetUniformLocation(shader.get_shader_program(), "textColor"), color.x, color.y, color.z);
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(VAO);
 
