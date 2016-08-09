@@ -37,6 +37,15 @@ if(NOT GLUT_FOUND)
     message(ERROR " GLUT not found!")
 endif(NOT GLUT_FOUND)
 
+#########################################################
+# FIND GLEW
+#########################################################
+
+find_package(GLEW REQUIRED)
+if (GLEW_FOUND)
+    include_directories(${GLEW_INCLUDE_DIRS})
+    link_libraries(${GLEW_LIBRARIES})
+endif()
 
 #########################################################
 # FIND OPENGL
@@ -53,6 +62,7 @@ endif(NOT OPENGL_FOUND)
 if(NOT OPENGL_GLU_FOUND)
     message(ERROR " GLU not found!")
 endif(NOT OPENGL_GLU_FOUND)
+
 
 #########################################################
 # FIND FREETYPE
@@ -98,7 +108,9 @@ target_link_libraries(
     ${GLUT_LIBRARIES}
     ${OPENGL_glu_LIBRARY}
     ${OPENGL_gl_LIBRARY}
+    ${GLEW_LIBRARIES}
     ${FREETYPE_LIBRARIES}
+    ${GLM_LIBRARY_DIRS}
     glfw)
 
 

@@ -1,3 +1,4 @@
+#include <GL/glew.h>
 #include <GL/glut.h>
 #include "ui.hpp"
 #include "imgui/imgui.h"
@@ -6,27 +7,169 @@
 namespace game_graphics
 {
 
-game_fonts::game_fonts()
+game_fonts::game_fonts() :
+    VAO{0},
+    VBO{0}
 {
     LOG3("Init game_fonts! Setting up the text rendering environment.");
+
+
     //Init the FT library
     FT_Error ft_error = FT_Init_FreeType(&ft_library);
     if(ft_error){
-        ERR("Unable to initialize the freetype library!");
+        ERR("Unable to initialize the freetype library, error: ",
+            ft_error);
         //TODO: This look weird!
         throw std::runtime_error("freetype init failed!");
     }
     //Load the font
     ft_error = FT_New_Face(ft_library,
-                           "FreeSans.ttf",
+                           "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
                            0,
-                           &ft_font_face);
+                           &ft_face);
     if(ft_error){
-        ERR("Unable to initialize the font face!");
+        ERR("Unable to initialize the font face, error: ",
+            ft_error);
         throw std::runtime_error("freetype init failed!");
     }
     //Set default font size
-    FT_Set_Pixel_Sizes(ft_font_face,0,48);
+    FT_Set_Pixel_Sizes(ft_face,0,48);
+
+    // Disable byte-alignment restriction
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    //Load the charset
+    load_charset();
+
+    // Configure VAO/VBO for texture quads
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER,
+                 sizeof(GLfloat) * 6 * 4,
+                 NULL,
+                 GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,
+                          4,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          4 * sizeof(GLfloat), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void game_fonts::load_charset()
+{
+    LOG1("Loading first 128 ASCII characters.");
+    bool loading_error = false;
+    for(GLchar charcode{0};charcode<127;++charcode)
+    {
+        FT_Error ft_error = FT_Load_Char(ft_face,
+                                         charcode,
+                                         FT_LOAD_RENDER);
+        if(ft_error){
+            loading_error = true;
+            break;
+        }
+
+        // Generate texture
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(
+                    GL_TEXTURE_2D,
+                    0,
+                    GL_RED,
+                    ft_face->glyph->bitmap.width,
+                    ft_face->glyph->bitmap.rows,
+                    0,
+                    GL_RED,
+                    GL_UNSIGNED_BYTE,
+                    ft_face->glyph->bitmap.buffer
+                    );
+        // Set texture options
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_WRAP_S,
+                        GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_WRAP_T,
+                        GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_MIN_FILTER,
+                        GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_MAG_FILTER,
+                        GL_LINEAR);
+        // Now store character for later use
+        Character character = {
+            texture,
+            glm::ivec2(ft_face->glyph->bitmap.width,
+                ft_face->glyph->bitmap.rows),
+            glm::ivec2(ft_face->glyph->bitmap_left,
+                ft_face->glyph->bitmap_top),
+            ft_face->glyph->advance.x
+        };
+        charset[charcode]=character;
+    }
+
+    if(loading_error){
+         ERR("Error when loading the charset textures!");
+    }
+    else
+    {
+        LOG3("Charset loaded correctly! Releasing ft_face and ft_library");
+        glBindTexture(GL_TEXTURE_2D, 0);
+        // Destroy FreeType once we're finished
+        FT_Done_Face(ft_face);
+        FT_Done_FreeType(ft_library);
+    }
+}
+
+void game_fonts::render_text(const std::string &text,
+                             uint32_t x,
+                             uint32_t y,
+                             float scale = 1)
+{
+    glActiveTexture(GL_TEXTURE0);
+    glBindVertexArray(VAO);
+    for(auto current:text)
+    {
+        Character ch = charset[current];
+        GLfloat xpos = x + ch.Bearing.x * scale;
+        GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
+
+        GLfloat w = ch.Size.x * scale;
+        GLfloat h = ch.Size.y * scale;
+        // Update VBO for each character
+        GLfloat vertices[6][4] = {
+            { xpos,     ypos + h,   0.0, 0.0 },
+            { xpos,     ypos,       0.0, 1.0 },
+            { xpos + w, ypos,       1.0, 1.0 },
+
+            { xpos,     ypos + h,   0.0, 0.0 },
+            { xpos + w, ypos,       1.0, 1.0 },
+            { xpos + w, ypos + h,   1.0, 0.0 }
+        };
+        // Render glyph texture over quad
+        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+        // Update content of VBO memory
+        glBindBuffer(GL_ARRAY_BUFFER,
+                     VBO);
+        glBufferSubData(GL_ARRAY_BUFFER,
+                        0,
+                        sizeof(vertices),
+                        vertices); // Be sure to use glBufferSubData and not glBufferData
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // Render quad
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        // Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+        x += (ch.Advance >> 6) * scale;
+    }
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 namespace{
@@ -171,6 +314,22 @@ ui::ui(game_configuration::game_config_ptr conf_info,
     ui_instance_pointer = this;
     //Start the initialization
     init_ui_window();
+    //Init GLEW
+    GLenum gl_error = glewInit();
+    if(gl_error != GLEW_OK)
+    {
+        ERR("Unable to load GLEW, error: ",
+            gl_error);
+        throw std::runtime_error("Unable to load GLEW!");
+    }
+
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA,
+                GL_ONE_MINUS_SRC_ALPHA);
+
+    //Init the text rendered
+    fonts = std::make_shared<game_fonts>();
 }
 
 void ui::init_ui_window()
@@ -237,46 +396,46 @@ void ui::setup_ui_styles(bool dark_style,
     style.Colors[ImGuiCol_Text]                  = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
     style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
     style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.94f, 0.94f, 0.94f, 1.00f);
-    style.Colors[ImGuiCol_ChildWindowBg]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    style.Colors[ImGuiCol_PopupBg]               = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
-    style.Colors[ImGuiCol_Border]                = ImVec4(0.00f, 0.00f, 0.00f, 0.39f);
-    style.Colors[ImGuiCol_BorderShadow]          = ImVec4(1.00f, 1.00f, 1.00f, 0.10f);
-    style.Colors[ImGuiCol_FrameBg]               = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
-    style.Colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
-    style.Colors[ImGuiCol_FrameBgActive]         = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+    style.Colors[ImGuiCol_ChildWindowBg]         = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    style.Colors[ImGuiCol_PopupBg]               = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style.Colors[ImGuiCol_Border]                = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    style.Colors[ImGuiCol_BorderShadow]          = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style.Colors[ImGuiCol_FrameBg]               = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style.Colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_FrameBgActive]         = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     style.Colors[ImGuiCol_TitleBg]               = ImVec4(0.96f, 0.96f, 0.96f, 1.00f);
-    style.Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(1.00f, 1.00f, 1.00f, 0.51f);
+    style.Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
     style.Colors[ImGuiCol_TitleBgActive]         = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
     style.Colors[ImGuiCol_MenuBarBg]             = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
-    style.Colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.98f, 0.98f, 0.98f, 0.53f);
+    style.Colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.98f, 0.98f, 0.98f, 1.00f);
     style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.69f, 0.69f, 0.69f, 1.00f);
     style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.59f, 0.59f, 0.59f, 1.00f);
     style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.49f, 0.49f, 0.49f, 1.00f);
-    style.Colors[ImGuiCol_ComboBg]               = ImVec4(0.86f, 0.86f, 0.86f, 0.99f);
+    style.Colors[ImGuiCol_ComboBg]               = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
     style.Colors[ImGuiCol_CheckMark]             = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     style.Colors[ImGuiCol_SliderGrab]            = ImVec4(0.24f, 0.52f, 0.88f, 1.00f);
     style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_Button]                = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
+    style.Colors[ImGuiCol_Button]                = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     style.Colors[ImGuiCol_ButtonHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     style.Colors[ImGuiCol_ButtonActive]          = ImVec4(0.06f, 0.53f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_Header]                = ImVec4(0.26f, 0.59f, 0.98f, 0.31f);
-    style.Colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+    style.Colors[ImGuiCol_Header]                = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     style.Colors[ImGuiCol_HeaderActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     style.Colors[ImGuiCol_Column]                = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
-    style.Colors[ImGuiCol_ColumnHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
+    style.Colors[ImGuiCol_ColumnHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     style.Colors[ImGuiCol_ColumnActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(1.00f, 1.00f, 1.00f, 0.50f);
-    style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
-    style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-    style.Colors[ImGuiCol_CloseButton]           = ImVec4(0.59f, 0.59f, 0.59f, 0.50f);
+    style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_CloseButton]           = ImVec4(0.59f, 0.59f, 0.59f, 1.00f);
     style.Colors[ImGuiCol_CloseButtonHovered]    = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
     style.Colors[ImGuiCol_CloseButtonActive]     = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
     style.Colors[ImGuiCol_PlotLines]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
     style.Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
     style.Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
     style.Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-    style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
-    style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+    style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
 
     if( dark_style )
     {
@@ -550,17 +709,30 @@ void ui::process_ui_events()
 
 void ui::loop()
 {
+
     bool load_texture{ false };
     bool close_window{ false };
     bool p_open;
+
+    glViewport(0, 0, ui_window_width,
+                     ui_window_height);
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
 
-        ImGui_ImplGlfw_NewFrame();
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+
+
+   /*     ImGui_ImplGlfw_NewFrame();
+
+        //Let the UI process the UI events
+        process_ui_events();
 
         if(close_window == false){
-            ImGui::SetNextWindowSize(ImVec2(350,100),ImGuiSetCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(450,100),ImGuiSetCond_FirstUseEver);
             ImGui::Begin("What do you want to do?",
                          &p_open, ImGuiWindowFlags_NoResize);
             if(ImGui::Button("Load the texture"))
@@ -568,22 +740,14 @@ void ui::loop()
             if(ImGui::Button("Close Window"))
                 close_window = true;
             ImGui::End();
-        }
+        }*/
 
-        ImGui::ShowTestWindow();
+    //    ImGui::ShowTestWindow();
 
-        display_ui_info();
+        fonts->render_text("Text",10,10);
 
-        //Let the UI process the UI events
-        process_ui_events();
 
-        glViewport(0, 0, ui_window_width,
-                   ui_window_height);
-
-        glClearColor(0,0,0,1);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        ImGui::Render();
+        //ImGui::Render();
         glfwSwapBuffers(window);
     }
 }

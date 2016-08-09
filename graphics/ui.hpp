@@ -3,23 +3,44 @@
 
 #include <string>
 #include <memory>
+#include <unordered_map>
 #include "../logger/logger.hpp"
 #include "../configuration/configuration.hpp"
 #include "../events/events.hpp"
 
 #include <GLFW/glfw3.h>
 #include <ft2build.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include FT_FREETYPE_H
 
 namespace game_graphics
 {
 
+/// Holds all state information relevant to a character as loaded using FreeType
+struct Character {
+    GLuint TextureID;   // ID handle of the glyph texture
+    glm::ivec2 Size;    // Size of glyph
+    glm::ivec2 Bearing;  // Offset from baseline to left/top of glyph
+    FT_Pos Advance;    // Horizontal offset to advance to next glyph
+    ~Character(){}
+};
+
 class game_fonts
 {
     FT_Library ft_library;
-    FT_Face    ft_font_face;
+    FT_Face    ft_face;
+    GLuint     VAO, VBO;
+    std::unordered_map<GLchar, Character> charset;
+    void load_charset();
 public:
     game_fonts();
+    void render_text(const std::string& text,
+                     uint32_t x,
+                     uint32_t y, float scale);
 };
 
 struct ui;
@@ -91,6 +112,8 @@ struct window_viewport
     {};
 };
 
+using text_rendered_ptr = std::shared_ptr<game_fonts>;
+
 /*
  * Object responsible for the creation and handling of
  * the game window
@@ -105,6 +128,7 @@ class ui
     window_viewport    viewport;
     mouse_information  mouse_state;
     GLFWwindow*        window;
+    text_rendered_ptr  fonts;
 
     uint32_t ui_window_height,
              ui_window_width;
