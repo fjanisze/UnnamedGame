@@ -55,6 +55,13 @@ if(NOT OPENGL_GLU_FOUND)
 endif(NOT OPENGL_GLU_FOUND)
 
 #########################################################
+# FIND FREETYPE
+#########################################################
+find_package(Freetype REQUIRED)
+include_directories(${FREETYPE_INCLUDE_DIRS})
+
+
+#########################################################
 # FIND GLFW
 #########################################################
 

@@ -6,6 +6,29 @@
 namespace game_graphics
 {
 
+game_fonts::game_fonts()
+{
+    LOG3("Init game_fonts! Setting up the text rendering environment.");
+    //Init the FT library
+    FT_Error ft_error = FT_Init_FreeType(&ft_library);
+    if(ft_error){
+        ERR("Unable to initialize the freetype library!");
+        //TODO: This look weird!
+        throw std::runtime_error("freetype init failed!");
+    }
+    //Load the font
+    ft_error = FT_New_Face(ft_library,
+                           "FreeSans.ttf",
+                           0,
+                           &ft_font_face);
+    if(ft_error){
+        ERR("Unable to initialize the font face!");
+        throw std::runtime_error("freetype init failed!");
+    }
+    //Set default font size
+    FT_Set_Pixel_Sizes(ft_font_face,0,48);
+}
+
 namespace{
     ui* ui_instance_pointer = nullptr;
 }
@@ -529,6 +552,7 @@ void ui::loop()
 {
     bool load_texture{ false };
     bool close_window{ false };
+    bool p_open;
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -537,7 +561,8 @@ void ui::loop()
 
         if(close_window == false){
             ImGui::SetNextWindowSize(ImVec2(350,100),ImGuiSetCond_FirstUseEver);
-            ImGui::Begin("What do you want to do?");
+            ImGui::Begin("What do you want to do?",
+                         &p_open, ImGuiWindowFlags_NoResize);
             if(ImGui::Button("Load the texture"))
                 load_texture = true;
             if(ImGui::Button("Close Window"))
@@ -545,6 +570,7 @@ void ui::loop()
             ImGui::End();
         }
 
+        ImGui::ShowTestWindow();
 
         display_ui_info();
 

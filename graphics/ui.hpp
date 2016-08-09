@@ -8,9 +8,19 @@
 #include "../events/events.hpp"
 
 #include <GLFW/glfw3.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 namespace game_graphics
 {
+
+class game_fonts
+{
+    FT_Library ft_library;
+    FT_Face    ft_font_face;
+public:
+    game_fonts();
+};
 
 struct ui;
 
