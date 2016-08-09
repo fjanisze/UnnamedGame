@@ -1,4 +1,5 @@
-/*#include <GL/glut.h>
+/*
+#include <GL/glut.h>
 #include "logger/logger.hpp"
 #include "runner/runner.hpp"
 #include <iostream>
@@ -203,7 +204,7 @@ int main()
 
     // Load font as face
     FT_Face face;
-    if (FT_New_Face(ft, "fonts/arial.ttf", 0, &face))
+    if (FT_New_Face(ft, "/usr/share/fonts/truetype/freefont/FreeMono.ttf", 0, &face))
         std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
 
     // Set size to load glyphs as
