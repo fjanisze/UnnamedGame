@@ -39,15 +39,25 @@ struct font_texture
 
 using font_texture_ptr = std::shared_ptr<font_texture>;
 
+/*
+ * Instead of passing everywhere the font name
+ * the code will identify the various font by
+ * a unique ID
+ */
+using font_type_id = int;
+
 class font_texture_loader
 {
     FT_Library freetype_lib;
-    std::unordered_map<std::string,font_texture_ptr> fonts;
-    font_texture_ptr load_new_textureset(const std::string& font_name);
+    font_type_id next_id;
+    std::unordered_map<font_type_id,font_texture_ptr> fonts;
 public:
     font_texture_loader();
-    font_texture_ptr get_texture(const std::string& font_name);
+    std::pair<font_type_id,font_texture_ptr> load_new_textureset(const std::string& font_name);
+    font_texture_ptr get_texture(font_type_id id);
 };
+
+
 
 }
 

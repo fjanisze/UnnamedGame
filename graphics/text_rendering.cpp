@@ -3,7 +3,8 @@
 namespace text_renderer
 {
 
-font_texture_loader::font_texture_loader()
+font_texture_loader::font_texture_loader() :
+    next_id{ 1 }
 {
     LOG3("Creating the font loader object.");
     FT_Error error = FT_Init_FreeType(&freetype_lib);
@@ -23,11 +24,13 @@ font_texture_loader::font_texture_loader()
  * font_name. Return nullptr if the operations fails
  */
 
-font_texture_ptr font_texture_loader::load_new_textureset(const std::string &font_name)
+std::pair<font_type_id,font_texture_ptr>
+font_texture_loader::load_new_textureset(const std::string &font_name)
 {
     LOG3("Attempt to load the font: ",
          font_name);
     font_texture_ptr new_font = nullptr;
+    font_type_id     new_font_id = 0;
     FT_Face          font_face;
     FT_Error error = FT_New_Face(freetype_lib,
                                  font_name.c_str(),
@@ -41,6 +44,7 @@ font_texture_ptr font_texture_loader::load_new_textureset(const std::string &fon
     else
     {
         new_font = std::make_shared<font_texture>();
+        new_font->font_name = font_name;
         // Set size to load glyphs as
         FT_Set_Pixel_Sizes(font_face, 0, 48);
 
@@ -54,7 +58,7 @@ font_texture_ptr font_texture_loader::load_new_textureset(const std::string &fon
             if (FT_Load_Char(font_face, current_char, FT_LOAD_RENDER))
             {
                 ERR("Failed to load the Glyph for the requested font!");
-                return nullptr;
+                return {0,nullptr};
             }
             // Generate texture
             GLuint texture;
@@ -91,10 +95,13 @@ font_texture_ptr font_texture_loader::load_new_textureset(const std::string &fon
         glBindTexture(GL_TEXTURE_2D, 0);
         FT_Done_Face(font_face);
 
+        new_font_id = next_id++;
         LOG1("Font ",font_name," loaded properly!");
-        fonts.insert({font_name,new_font});
+        fonts.insert({new_font_id,
+                      new_font});
     }
-    return new_font;
+    return {new_font_id,
+                new_font};
 }
 
 
@@ -105,11 +112,12 @@ font_texture_ptr font_texture_loader::load_new_textureset(const std::string &fon
  *
  * font_name is actually a path.
  */
-font_texture_ptr font_texture_loader::get_texture(const std::string &font_name)
+font_texture_ptr font_texture_loader::get_texture(font_type_id id)
 {
-    auto it = fonts.find(font_name);
+    auto it = fonts.find(id);
     if(it == fonts.end()){
-        return load_new_textureset(font_name);
+        ERR("Unable to find the font with id ",id);
+        return nullptr;
     }
     return it->second;
 }

@@ -112,11 +112,15 @@ int main()
     glUniformMatrix4fv(glGetUniformLocation(shader.get_shader_program(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
     text_renderer::font_texture_loader fonts;
-    text_renderer::font_texture_ptr font_texture = fonts.get_texture(
-                "/usr/share/fonts/truetype/freefont/FreeMono.ttf");
-    text_renderer::font_texture_ptr font_texture2 = fonts.get_texture(
-                "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf");
-    if(font_texture == nullptr){
+    text_renderer::font_type_id font_id1 = fonts.load_new_textureset(
+                "/usr/share/fonts/truetype/freefont/FreeMono.ttf").first;
+    text_renderer::font_type_id font_id2 = fonts.load_new_textureset(
+                "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf").first;
+
+    text_renderer::font_texture_ptr font_texture1 = fonts.get_texture(font_id1);
+    text_renderer::font_texture_ptr font_texture2 = fonts.get_texture(font_id2);
+
+    if(font_texture2 == nullptr || font_texture1 == nullptr){
         ERR("Loading failed!");
         return 1;
     }
@@ -142,7 +146,7 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        RenderText(shader,font_texture2, "This is sample text", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+        RenderText(shader,font_texture1, "This is sample text", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
         RenderText(shader,font_texture2, "(C) LearnOpenGL.com", 540.0f, 570.0f, 0.5f, glm::vec3(0.3, 0.7f, 0.9f));
 
         // Swap the buffers
