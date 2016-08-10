@@ -43,6 +43,7 @@ int main(int argc,char** argv)
 // Properties
 
 #include "graphics/shaders.hpp"
+#include "graphics/text_rendering.hpp"
 
 // Properties
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -55,11 +56,12 @@ struct Character {
     FT_Pos Advance;    // Horizontal offset to advance to next glyph
 };
 
-std::map<GLchar, Character> Characters;
 GLuint VAO, VBO;
 
 
-void RenderText(game_shaders::shader &shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);
+void RenderText(game_shaders::shader &shader,
+                text_renderer::font_texture_ptr font,
+                std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);
 
 static void GLFW_error(int error, const char* description)
 {
@@ -109,66 +111,15 @@ int main()
     shader.use_shader();
     glUniformMatrix4fv(glGetUniformLocation(shader.get_shader_program(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-    // FreeType
-    FT_Library ft;
-    // All functions return a value different than 0 whenever an error occurred
-    if (FT_Init_FreeType(&ft))
-        std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
-
-    // Load font as face
-    FT_Face face;
-    if (FT_New_Face(ft, "/usr/share/fonts/truetype/freefont/FreeMono.ttf", 0, &face))
-        std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
-
-    // Set size to load glyphs as
-    FT_Set_Pixel_Sizes(face, 0, 48);
-
-    // Disable byte-alignment restriction
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    // Load first 128 characters of ASCII set
-    for (GLubyte c = 0; c < 128; c++)
-    {
-        // Load character glyph
-        if (FT_Load_Char(face, c, FT_LOAD_RENDER))
-        {
-            std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
-            continue;
-        }
-        // Generate texture
-        GLuint texture;
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RED,
-            face->glyph->bitmap.width,
-            face->glyph->bitmap.rows,
-            0,
-            GL_RED,
-            GL_UNSIGNED_BYTE,
-            face->glyph->bitmap.buffer
-        );
-        // Set texture options
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // Now store character for later use
-        Character character = {
-            texture,
-            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            face->glyph->advance.x
-        };
-        Characters.insert(std::pair<GLchar, Character>(c, character));
+    text_renderer::font_texture_loader fonts;
+    text_renderer::font_texture_ptr font_texture = fonts.get_texture(
+                "/usr/share/fonts/truetype/freefont/FreeMono.ttf");
+    text_renderer::font_texture_ptr font_texture2 = fonts.get_texture(
+                "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf");
+    if(font_texture == nullptr){
+        ERR("Loading failed!");
+        return 1;
     }
-    glBindTexture(GL_TEXTURE_2D, 0);
-    // Destroy FreeType once we're finished
-    FT_Done_Face(face);
-    FT_Done_FreeType(ft);
-
 
     // Configure VAO/VBO for texture quads
     glGenVertexArrays(1, &VAO);
@@ -191,8 +142,8 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        RenderText(shader, "This is sample text", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-        RenderText(shader, "(C) LearnOpenGL.com", 540.0f, 570.0f, 0.5f, glm::vec3(0.3, 0.7f, 0.9f));
+        RenderText(shader,font_texture2, "This is sample text", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+        RenderText(shader,font_texture2, "(C) LearnOpenGL.com", 540.0f, 570.0f, 0.5f, glm::vec3(0.3, 0.7f, 0.9f));
 
         // Swap the buffers
         glfwSwapBuffers(window);
@@ -202,7 +153,9 @@ int main()
     return 0;
 }
 
-void RenderText(game_shaders::shader &shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color)
+void RenderText(game_shaders::shader &shader,
+                text_renderer::font_texture_ptr font,
+                std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color)
 {
     // Activate corresponding render state
     shader.use_shader();
@@ -214,7 +167,7 @@ void RenderText(game_shaders::shader &shader, std::string text, GLfloat x, GLflo
     std::string::const_iterator c;
     for (c = text.begin(); c != text.end(); c++)
     {
-        Character ch = Characters[*c];
+        text_renderer::character_data ch = font->charset[*c];
 
         GLfloat xpos = x + ch.Bearing.x * scale;
         GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * scale;

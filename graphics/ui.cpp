@@ -716,6 +716,7 @@ void ui::loop()
 
     glViewport(0, 0, ui_window_width,
                      ui_window_height);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     while (!glfwWindowShouldClose(window))
     {
