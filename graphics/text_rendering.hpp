@@ -51,13 +51,34 @@ class font_texture_loader
     FT_Library freetype_lib;
     font_type_id next_id;
     std::unordered_map<font_type_id,font_texture_ptr> fonts;
+    font_type_id default_font_id;
 public:
     font_texture_loader();
     std::pair<font_type_id,font_texture_ptr> load_new_textureset(const std::string& font_name);
     font_texture_ptr get_texture(font_type_id id);
+    font_type_id get_default_font_id();
 };
 
 
+class renderable_text
+{
+    GLuint VAO,VBO;
+    //Shared between all the instances of renderable_text
+    static font_texture_loader  font_loader;
+    static game_shaders::shader text_render_shader;
+    font_texture_ptr font_texture;
+
+    std::string text_string;
+    glm::fvec2  text_position;
+    GLfloat     text_scale;
+    glm::vec3   text_color;
+public:
+    renderable_text(const std::string& text,
+                    glm::fvec2 position,
+                    GLfloat scale,
+                    glm::vec3 color); //Use the default font
+    void render_text();
+};
 
 }
 

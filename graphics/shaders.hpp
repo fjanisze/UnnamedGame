@@ -30,7 +30,7 @@ class shader
 public:
     // Constructor generates the shader on the fly
     shader();
-    void load_from_path(const GLchar* vertex_path,
+    bool load_from_path(const GLchar* vertex_path,
                         const GLchar* fragment_path);
     void load_from_string(const std::string& vertex_shader_code,
                           const std::string& frag_shader_code);

@@ -16,6 +16,13 @@ font_texture_loader::font_texture_loader() :
     else
     {
         LOG3("Freetype lib loaded correctly.");
+        //Load the default font which shall have the ID 1
+        auto default_font = load_new_textureset("/usr/share/fonts/truetype/freefont/FreeSerif.ttf");
+        if(default_font.second == nullptr){
+            ERR("Failed to load the default font.");
+            throw std::runtime_error("Unable to load the default font!.");
+        }
+        default_font_id = default_font.first;
     }
 }
 
@@ -120,6 +127,123 @@ font_texture_ptr font_texture_loader::get_texture(font_type_id id)
         return nullptr;
     }
     return it->second;
+}
+
+font_type_id font_texture_loader::get_default_font_id()
+{
+    return default_font_id;
+}
+
+
+font_texture_loader renderable_text::font_loader;
+game_shaders::shader  renderable_text::text_render_shader;
+
+/*
+ * Create a renderable test
+ */
+renderable_text::renderable_text(const std::string& text,
+                                 glm::fvec2 position,
+                                 GLfloat scale,
+                                 glm::vec3 color) :
+    text_position( position ),
+    text_scale( scale ),
+    text_color( color ),
+    text_string( text )
+{
+    //Load the font texture
+    font_texture = font_loader.get_texture(font_loader.get_default_font_id());
+    if(font_texture == nullptr){
+        ERR("Unable to create the renderable_text with the default font!");
+        throw std::runtime_error("renderable_text::renderable_text");
+    }
+    //Load the shader if not loaded
+    if(text_render_shader.get_shader_program() == 0){
+        bool result = text_render_shader.load_from_path("shaders/text.vs",
+                                                        "shaders/text.frag");
+        if(false == result){
+            ERR("Text creation failed!");
+            throw std::runtime_error("renderable_text::renderable_text");
+        }
+    }
+ }
+
+void renderable_text::render_text()
+{
+    glm::mat4 projection = glm::ortho(0.0f,
+                                      static_cast<GLfloat>(800),
+                                      0.0f,
+                                      static_cast<GLfloat>(600));
+    text_render_shader.use_shader();
+    glUniformMatrix4fv(glGetUniformLocation(text_render_shader.get_shader_program(),
+                                            "projection"),
+                                            1,
+                                            GL_FALSE,
+                                            glm::value_ptr(projection));
+
+    // Configure VAO/VBO for texture quads
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    text_render_shader.use_shader();
+    glUniform3f(glGetUniformLocation(text_render_shader.get_shader_program(),
+                                     "textColor"),
+                                    text_color.x,
+                                    text_color.y,
+                                    text_color.z);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindVertexArray(VAO);
+
+    // Iterate through all characters
+    std::string::const_iterator c;
+    GLfloat x = text_position.x;
+    for (std::size_t i{0 };i<text_string.size();++i)
+    {
+        char c = text_string[i];
+        if(font_texture->charset.find(c)==font_texture->charset.end()){
+            ERR("MERDA");
+        }
+        text_renderer::character_data ch = font_texture->charset[c];
+
+        GLfloat xpos = text_position.x + ch.Bearing.x * text_scale;
+        GLfloat ypos = text_position.y - (ch.Size.y - ch.Bearing.y) * text_scale;
+
+        GLfloat w = ch.Size.x * text_scale;
+        GLfloat h = ch.Size.y * text_scale;
+        // Update VBO for each character
+        GLfloat vertices[6][4] = {
+            { xpos,     ypos + h,   0.0, 0.0 },
+            { xpos,     ypos,       0.0, 1.0 },
+            { xpos + w, ypos,       1.0, 1.0 },
+
+            { xpos,     ypos + h,   0.0, 0.0 },
+            { xpos + w, ypos,       1.0, 1.0 },
+            { xpos + w, ypos + h,   1.0, 0.0 }
+        };
+        // Render glyph texture over quad
+        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+        // Update content of VBO memory
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferSubData(GL_ARRAY_BUFFER,
+                        0,
+                        sizeof(vertices),
+                        vertices); // Be sure to use glBufferSubData and not glBufferData
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // Render quad
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        // Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+        x += (ch.Advance >> 6) * text_scale; // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
+    }
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 }

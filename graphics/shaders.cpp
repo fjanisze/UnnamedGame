@@ -4,23 +4,27 @@
 namespace game_shaders
 {
 
-shader::shader()
+shader::shader() :
+    shader_program{ 0 }
 {
     LOG3("New shader created!");
 }
 
-void shader::load_from_path(const GLchar *vertex_path,
+bool shader::load_from_path(const GLchar *vertex_path,
                             const GLchar *fragment_path)
 {
+    bool operation_ok = true;
     vertex_code_path = vertex_path;
     fragment_code_path = fragment_path;
     if(load_shader_code())
     {
-        compile_shader();
+        operation_ok = compile_shader();
     }
     else{
         ERR("Shader creation failed!");
+        operation_ok = false;
     }
+    return operation_ok;
 }
 
 void shader::load_from_string(const std::string& vertex_shader_code,

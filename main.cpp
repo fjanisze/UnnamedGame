@@ -78,7 +78,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+  //  glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "LearnOpenGL", nullptr, nullptr); // Windowed
     if(window==NULL){
@@ -105,36 +105,30 @@ int main()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Compile and setup the shader
-    game_shaders::shader shader;
+/*    game_shaders::shader shader;
     shader.load_from_path("shaders/text.vs", "shaders/text.frag");
     glm::mat4 projection = glm::ortho(0.0f, static_cast<GLfloat>(WIDTH), 0.0f, static_cast<GLfloat>(HEIGHT));
     shader.use_shader();
     glUniformMatrix4fv(glGetUniformLocation(shader.get_shader_program(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
     text_renderer::font_texture_loader fonts;
-    text_renderer::font_type_id font_id1 = fonts.load_new_textureset(
-                "/usr/share/fonts/truetype/freefont/FreeMono.ttf").first;
-    text_renderer::font_type_id font_id2 = fonts.load_new_textureset(
-                "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf").first;
-
+    text_renderer::font_type_id font_id1 = fonts.get_default_font_id();
     text_renderer::font_texture_ptr font_texture1 = fonts.get_texture(font_id1);
-    text_renderer::font_texture_ptr font_texture2 = fonts.get_texture(font_id2);
 
-    if(font_texture2 == nullptr || font_texture1 == nullptr){
+    if(font_texture1 == nullptr){
         ERR("Loading failed!");
         return 1;
     }
+*/
 
-    // Configure VAO/VBO for texture quads
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+
+
+
+    text_renderer::renderable_text text1("This is sample text",
+                                         glm::fvec2(25.0,25.0),
+                                         1,
+                                         glm::vec3(0.5, 0.8f, 0.2f));
+
 
     // Game loop
     while (!glfwWindowShouldClose(window))
@@ -145,10 +139,27 @@ int main()
         // Clear the colorbuffer
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+/*
+       glm::mat4 projection = glm::ortho(0.0f, static_cast<GLfloat>(WIDTH), 0.0f, static_cast<GLfloat>(HEIGHT));
+        shader.use_shader();
+        glUniformMatrix4fv(glGetUniformLocation(shader.get_shader_program(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+
+        // Configure VAO/VBO for texture quads
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
 
         RenderText(shader,font_texture1, "This is sample text", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-        RenderText(shader,font_texture2, "(C) LearnOpenGL.com", 540.0f, 570.0f, 0.5f, glm::vec3(0.3, 0.7f, 0.9f));
-
+     //   RenderText(shader,font_texture2, "(C) LearnOpenGL.com", 540.0f, 570.0f, 0.5f, glm::vec3(0.3, 0.7f, 0.9f));
+*/
+        text1.render_text();
         // Swap the buffers
         glfwSwapBuffers(window);
     }
@@ -169,9 +180,10 @@ void RenderText(game_shaders::shader &shader,
 
     // Iterate through all characters
     std::string::const_iterator c;
-    for (c = text.begin(); c != text.end(); c++)
+    for (std::size_t i{0};i<text.size();++i)
     {
-        text_renderer::character_data ch = font->charset[*c];
+        char c = text[i];
+        text_renderer::character_data ch = font->charset[c];
 
         GLfloat xpos = x + ch.Bearing.x * scale;
         GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
