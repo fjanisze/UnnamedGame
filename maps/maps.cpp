@@ -1,4 +1,4 @@
-#include "../logger/logger.hpp"
+#include <logger/logger.hpp>
 #include "maps.hpp"
 
 namespace game_maps

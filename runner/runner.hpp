@@ -1,13 +1,15 @@
 #ifndef HPP_RUNNER
 #define HPP_RUNNER
 
+#include <graphics/ui.hpp>
+
 #include <memory>
-#include "../events/events.hpp"
-#include "../chrono/chrono.hpp"
-#include "../graphics/ui.hpp"
-#include "../configuration/configuration.hpp"
-#include "../random/random.hpp"
-#include "../maps/maps.hpp"
+#include <logger/logger.hpp>
+#include <events/events.hpp>
+#include <chrono/chrono.hpp>
+#include <configuration/configuration.hpp>
+#include <random/random.hpp>
+#include <maps/maps.hpp>
 
 namespace game_runner
 {

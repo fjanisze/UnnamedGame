@@ -84,16 +84,18 @@ add_subdirectory("./graphics/glfw/")
 # Remaining stuff
 #########################################################
 
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+
 file(GLOB SRC_LIST
     "*.hpp"
     "*.cpp"
+   "./runner/*.*"
     "./chrono/*.hpp"
     "./chrono/*.cpp"
     "./events/*.cpp"
     "./events/*.hpp"
     "./logger/*.*"
     "./configuration/*.*"
-    "./runner/*.*"
     "./graphics/*.*"
     "./graphics/imgui/*.*"
     "./maps/*.*"

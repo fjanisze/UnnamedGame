@@ -1,176 +1,7 @@
-#include <GL/glew.h>
-#include <GL/glut.h>
 #include "ui.hpp"
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
 
 namespace game_graphics
 {
-
-game_fonts::game_fonts() :
-    VAO{0},
-    VBO{0}
-{
-    LOG3("Init game_fonts! Setting up the text rendering environment.");
-
-
-    //Init the FT library
-    FT_Error ft_error = FT_Init_FreeType(&ft_library);
-    if(ft_error){
-        ERR("Unable to initialize the freetype library, error: ",
-            ft_error);
-        //TODO: This look weird!
-        throw std::runtime_error("freetype init failed!");
-    }
-    //Load the font
-    ft_error = FT_New_Face(ft_library,
-                           "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-                           0,
-                           &ft_face);
-    if(ft_error){
-        ERR("Unable to initialize the font face, error: ",
-            ft_error);
-        throw std::runtime_error("freetype init failed!");
-    }
-    //Set default font size
-    FT_Set_Pixel_Sizes(ft_face,0,48);
-
-    // Disable byte-alignment restriction
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    //Load the charset
-    load_charset();
-
-    // Configure VAO/VBO for texture quads
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(GLfloat) * 6 * 4,
-                 NULL,
-                 GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0,
-                          4,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          4 * sizeof(GLfloat), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-
-void game_fonts::load_charset()
-{
-    LOG1("Loading first 128 ASCII characters.");
-    bool loading_error = false;
-    for(GLchar charcode{0};charcode<127;++charcode)
-    {
-        FT_Error ft_error = FT_Load_Char(ft_face,
-                                         charcode,
-                                         FT_LOAD_RENDER);
-        if(ft_error){
-            loading_error = true;
-            break;
-        }
-
-        // Generate texture
-        GLuint texture;
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(
-                    GL_TEXTURE_2D,
-                    0,
-                    GL_RED,
-                    ft_face->glyph->bitmap.width,
-                    ft_face->glyph->bitmap.rows,
-                    0,
-                    GL_RED,
-                    GL_UNSIGNED_BYTE,
-                    ft_face->glyph->bitmap.buffer
-                    );
-        // Set texture options
-        glTexParameteri(GL_TEXTURE_2D,
-                        GL_TEXTURE_WRAP_S,
-                        GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D,
-                        GL_TEXTURE_WRAP_T,
-                        GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D,
-                        GL_TEXTURE_MIN_FILTER,
-                        GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D,
-                        GL_TEXTURE_MAG_FILTER,
-                        GL_LINEAR);
-        // Now store character for later use
-        Character character = {
-            texture,
-            glm::ivec2(ft_face->glyph->bitmap.width,
-                ft_face->glyph->bitmap.rows),
-            glm::ivec2(ft_face->glyph->bitmap_left,
-                ft_face->glyph->bitmap_top),
-            ft_face->glyph->advance.x
-        };
-        charset[charcode]=character;
-    }
-
-    if(loading_error){
-         ERR("Error when loading the charset textures!");
-    }
-    else
-    {
-        LOG3("Charset loaded correctly! Releasing ft_face and ft_library");
-        glBindTexture(GL_TEXTURE_2D, 0);
-        // Destroy FreeType once we're finished
-        FT_Done_Face(ft_face);
-        FT_Done_FreeType(ft_library);
-    }
-}
-
-void game_fonts::render_text(const std::string &text,
-                             uint32_t x,
-                             uint32_t y,
-                             float scale = 1)
-{
-    glActiveTexture(GL_TEXTURE0);
-    glBindVertexArray(VAO);
-    for(auto current:text)
-    {
-        Character ch = charset[current];
-        GLfloat xpos = x + ch.Bearing.x * scale;
-        GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
-
-        GLfloat w = ch.Size.x * scale;
-        GLfloat h = ch.Size.y * scale;
-        // Update VBO for each character
-        GLfloat vertices[6][4] = {
-            { xpos,     ypos + h,   0.0, 0.0 },
-            { xpos,     ypos,       0.0, 1.0 },
-            { xpos + w, ypos,       1.0, 1.0 },
-
-            { xpos,     ypos + h,   0.0, 0.0 },
-            { xpos + w, ypos,       1.0, 1.0 },
-            { xpos + w, ypos + h,   1.0, 0.0 }
-        };
-        // Render glyph texture over quad
-        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
-        // Update content of VBO memory
-        glBindBuffer(GL_ARRAY_BUFFER,
-                     VBO);
-        glBufferSubData(GL_ARRAY_BUFFER,
-                        0,
-                        sizeof(vertices),
-                        vertices); // Be sure to use glBufferSubData and not glBufferData
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        // Render quad
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        // Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-        x += (ch.Advance >> 6) * scale;
-    }
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
 
 namespace{
     ui* ui_instance_pointer = nullptr;
@@ -185,7 +16,7 @@ namespace{
  */
 
 void glut_draw_callback(){
-    ui_instance_pointer->draw();
+//    ui_instance_pointer->draw();
 }
 
 void glut_idle_func_callback(){
@@ -328,8 +159,12 @@ ui::ui(game_configuration::game_config_ptr conf_info,
     glBlendFunc(GL_SRC_ALPHA,
                 GL_ONE_MINUS_SRC_ALPHA);
 
-    //Init the text rendered
-    fonts = std::make_shared<game_fonts>();
+	//Init the statistic text
+	stats_text = std::make_shared<text_renderer::renderable_text>();
+	stats_text->set_color(glm::vec3(1.0,1.0,1.0));
+	stats_text->set_position(glm::fvec2(10,ui_window_height-20));
+	stats_text->set_scale(0.3f);
+	stats_text->set_window_size(ui_window_height,ui_window_width);
 }
 
 void ui::init_ui_window()
@@ -341,13 +176,13 @@ void ui::init_ui_window()
     window_height = game_conf->get_option("window_height");
     if(window_height.empty() || window_width.empty()){
         WARN1("Window size configuration not available, using default 800x600");
-        window_height = "800";
-        window_width = "600";
+		window_height = "600";
+		window_width = "800";
     }
     ui_window_height = std::stoi(window_height),
     ui_window_width = std::stoi(window_width);
 
-    LOG1("Configuring window size to ", ui_window_height,"x",ui_window_width);
+	LOG1("Configuring window size to ", ui_window_width,"x",ui_window_height);
 
     init_viewport();
     init_glfw_window();
@@ -364,8 +199,8 @@ void ui::init_glfw_window()
         throw std::runtime_error("GLFW initialization failed");
     }
 
-    window = glfwCreateWindow(ui_window_width,
-                               ui_window_height,
+	window = glfwCreateWindow(ui_window_width,
+							   ui_window_height,
                                "Unnamed Game",
                                NULL,
                                NULL);
@@ -474,36 +309,9 @@ void ui::setup_ui_styles(bool dark_style,
 
 void ui::display_ui_info()
 {
-    glColor3f(1,1,1);
     std::stringstream stat_string;
-    stat_string << "draw_call: "<<draw_stats.num_of_draw_call;
-    draw_string(5,10,stat_string.str());
-    stat_string.str("");
-    stat_string << "reshape_call: "<<draw_stats.num_of_reshape_call;
-    draw_string(5,20,stat_string.str());
-    stat_string.str("");
-    stat_string << "idle_func: "<<draw_stats.num_of_idle_func_call;
-    draw_string(5,30,stat_string.str());
-    stat_string.str("");
-    stat_string<<"W. Width:"<<ui_window_width<<",Height:"<<ui_window_height;
-    draw_string(5,40,stat_string.str());
-    stat_string.str("");
-    stat_string<<"Viewport, X:"<<viewport.x_from<<"/"<<viewport.x_to;
-    stat_string<<" Y:"<<viewport.y_from<<"/"<<viewport.y_to;
-    draw_string(5,50,stat_string.str());
-}
-
-void ui::draw_string(uint32_t x_pos,
-                     uint32_t y_pos,
-                     const std::string &text)
-{
-    glRasterPos2i(x_pos,
-                  y_pos);
-    for( std::size_t i=0; i < text.size(); i++)
-    {
-        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_10,
-                            text[i]); // Print a character on the screen
-    }
+	stat_string << "draw_call: "<<draw_stats.num_of_draw_call;
+	stats_text->set_text(stat_string.str());
 }
 
 void ui::init_viewport()
@@ -525,8 +333,6 @@ void ui::move_viewport(uint32_t new_x_from,
     LOG3("Setting the viewport to x:",
          viewport.x_from,"/",viewport.x_to,", y:",
          viewport.y_from,"/",viewport.y_to);
-
-    draw();
 }
 
 void ui::update_viewport_size(uint32_t new_width,
@@ -534,8 +340,6 @@ void ui::update_viewport_size(uint32_t new_width,
 {
     viewport.x_to = viewport.x_from + new_width;
     viewport.y_to = viewport.y_from + new_height;
-
-    draw();
 }
 
 void ui::handle_arrow_key_press(arrow_key key)
@@ -576,20 +380,6 @@ arrow_key ui::is_arrow_key(uint32_t key_code)
     return key;
 }
 
-void ui::draw()
-{
-    ++draw_stats.num_of_draw_call;
-    //Background color
-    glClearColor(0,0,0,1);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-
-
-    display_ui_info();
-
-    glutSwapBuffers();
-}
-
 void ui::window_reshape(uint32_t width, uint32_t height)
 {
     ++draw_stats.num_of_reshape_call;
@@ -604,7 +394,6 @@ void ui::window_reshape(uint32_t width, uint32_t height)
     glViewport(0,0,ui_window_width,ui_window_height);
     gluOrtho2D(0.0,ui_window_width,ui_window_height,0);
 
-    draw();
 }
 
 void ui::mouse_click_down(mouse_button button,
@@ -720,14 +509,17 @@ void ui::loop()
 
     while (!glfwWindowShouldClose(window))
     {
+		++draw_stats.num_of_draw_call;
         glfwPollEvents();
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+		display_ui_info();
+		stats_text->render_text();
 
 
-   /*     ImGui_ImplGlfw_NewFrame();
+/*		ImGui_ImplGlfw_NewFrame();
 
         //Let the UI process the UI events
         process_ui_events();
@@ -741,14 +533,12 @@ void ui::loop()
             if(ImGui::Button("Close Window"))
                 close_window = true;
             ImGui::End();
-        }*/
+		}
 
-    //    ImGui::ShowTestWindow();
-
-        fonts->render_text("Text",10,10);
+	   ImGui::ShowTestWindow();
 
 
-        //ImGui::Render();
+		ImGui::Render();*/
         glfwSwapBuffers(window);
     }
 }

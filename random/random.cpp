@@ -1,5 +1,5 @@
 #include "random.hpp"
-#include "../logger/logger.hpp"
+#include <logger/logger.hpp>
 #include <limits>
 
 namespace random_engine

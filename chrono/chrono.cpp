@@ -1,4 +1,4 @@
-#include "../logger/logger.hpp"
+#include <logger/logger.hpp>
 #include "chrono.hpp"
 
 namespace game_chrono

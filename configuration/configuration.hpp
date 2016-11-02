@@ -3,7 +3,7 @@
 
 #include <string>
 #include <map>
-#include "../logger/logger.hpp"
+#include <logger/logger.hpp>
 
 namespace game_configuration
 {

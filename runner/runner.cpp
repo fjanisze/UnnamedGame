@@ -1,4 +1,3 @@
-#include "../logger/logger.hpp"
 #include "runner.hpp"
 #include <string>
 #include <thread>

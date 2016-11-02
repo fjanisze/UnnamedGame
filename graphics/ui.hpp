@@ -1,47 +1,26 @@
 #ifndef UI_HPP
 #define UI_HPP
 
+#include <graphics/common.hpp>
+
 #include <string>
 #include <memory>
 #include <unordered_map>
-#include "../logger/logger.hpp"
-#include "../configuration/configuration.hpp"
-#include "../events/events.hpp"
 
-#include <GLFW/glfw3.h>
-#include <ft2build.h>
+#include <logger/logger.hpp>
+#include <configuration/configuration.hpp>
+#include <events/events.hpp>
+#include <graphics/text_rendering.hpp>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+
+
 
 #include FT_FREETYPE_H
 
 namespace game_graphics
 {
-
-/// Holds all state information relevant to a character as loaded using FreeType
-struct Character {
-    GLuint TextureID;   // ID handle of the glyph texture
-    glm::ivec2 Size;    // Size of glyph
-    glm::ivec2 Bearing;  // Offset from baseline to left/top of glyph
-    FT_Pos Advance;    // Horizontal offset to advance to next glyph
-    ~Character(){}
-};
-
-class game_fonts
-{
-    FT_Library ft_library;
-    FT_Face    ft_face;
-    GLuint     VAO, VBO;
-    std::unordered_map<GLchar, Character> charset;
-    void load_charset();
-public:
-    game_fonts();
-    void render_text(const std::string& text,
-                     uint32_t x,
-                     uint32_t y, float scale);
-};
 
 struct ui;
 
@@ -112,8 +91,6 @@ struct window_viewport
     {};
 };
 
-using text_rendered_ptr = std::shared_ptr<game_fonts>;
-
 /*
  * Object responsible for the creation and handling of
  * the game window
@@ -128,7 +105,7 @@ class ui
     window_viewport    viewport;
     mouse_information  mouse_state;
     GLFWwindow*        window;
-    text_rendered_ptr  fonts;
+	text_renderer::rendr_text stats_text;
 
     uint32_t ui_window_height,
              ui_window_width;
@@ -137,9 +114,6 @@ class ui
     void init_glfw_window();
     void setup_ui_styles(bool dark_style,float alpha);
     void display_ui_info();
-    void draw_string(uint32_t x_pos,
-                     uint32_t y_pos,
-                     const std::string& text);
 
     void init_viewport();
     void move_viewport(uint32_t new_x_from,
@@ -153,7 +127,7 @@ class ui
 public:
     ui(game_configuration::game_config_ptr conf_info,
        game_events::game_evt_pointer event_queue);
-    void draw();
+
     void window_reshape(uint32_t width,
                         uint32_t height);
     void mouse_click_down(mouse_button button,

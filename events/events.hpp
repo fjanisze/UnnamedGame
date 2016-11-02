@@ -1,7 +1,7 @@
 #ifndef EVENTS_HPP
 #define EVENTS_HPP
 
-#include "../logger/logger.hpp"
+#include <logger/logger.hpp>
 #include <memory>
 #include <queue>
 #include <string>

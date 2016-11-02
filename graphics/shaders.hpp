@@ -1,43 +1,57 @@
 #ifndef SHADERS_HPP
 #define SHADERS_HPP
 
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-
-// GLEW
 #define GLEW_STATIC
-#include <GL/glew.h>
-// GLFW
+
+#include <logger/logger.hpp>
+
 #include <GLFW/glfw3.h>
+// GLM
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
-namespace game_shaders
+#include <string>
+
+namespace shaders
 {
 
-class shader
+const std::string simple_vertex_shader = {
+    "#version 330 core\n"
+        "layout (location = 0) in vec3 position;\n"
+        "void main()\n"
+        "{\n"
+        "gl_Position = vec4(position.x, position.y, position.z, 1.0);\n"
+        "}\0"
+};
+
+const std::string simple_fragment_shader = {
+    "#version 330 core\n"
+        "out vec4 color;\n"
+        "void main()\n"
+        "{\n"
+        "color = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+        "}\n\0"
+};
+
+class my_small_shaders
 {
-    GLuint shader_program;
-    std::string vertex_code_path,
-                fragment_code_path;
-    std::string vertex_code,
-                fragment_code;
-    //Buffer used to extract information
-    //from the shader compiler
-    GLchar info_log_buffer[512];
-    bool load_shader_code();
-    bool compile_shader();
+    GLuint vertex_shader,
+           fragment_shader,
+           shader_program;
+    GLchar log_buffer[512];
+    void load_shader_generic(GLuint& shader_target,
+                             const std::string& body,
+                             GLenum shader_type);
 public:
-    // Constructor generates the shader on the fly
-    shader();
-    bool load_from_path(const GLchar* vertex_path,
-                        const GLchar* fragment_path);
-    void load_from_string(const std::string& vertex_shader_code,
-                          const std::string& frag_shader_code);
-    // Uses the current shader
-    void use_shader();
-    GLuint get_shader_program();
+    my_small_shaders();
+    void load_vertex_shader(const std::string& body);
+    void load_fragment_shader(const std::string& body);
+    bool create_shader_program();
+    void use_shaders();
+    GLuint get_program();
 };
 
 }
+
 #endif
